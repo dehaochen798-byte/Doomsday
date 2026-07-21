@@ -33,3 +33,6 @@ Thumbs.db
 .npm
 .eslintcache
 tsconfig.tsbuildinfo
+
+# 文档/图
+docs/
