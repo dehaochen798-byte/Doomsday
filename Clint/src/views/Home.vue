@@ -8,7 +8,7 @@
                 标题
             </n-layout-header>
             <n-layout-content content-style="padding: 16px;">
-                内容
+                <router-view></router-view>
             </n-layout-content>
         </n-layout>
     </n-layout>
@@ -26,4 +26,6 @@
  * 
  * ### 多个router-view同一页面使用
  * 命名视图
+ *
+ * 
  */
