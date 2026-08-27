@@ -7,5 +7,6 @@ onMounted(() => {//❗坑 onMounted期望接受一个回调函数，dom挂载完
 </script>
 
 <template>
-  <router-link :to="{path:'/'}">回到首页</router-link>//❗坑 注意引号嵌套
+    <!--❗坑 注意引号嵌套 -->
+  <router-link :to="{path:'/'}">回到首页</router-link>
 </template>
