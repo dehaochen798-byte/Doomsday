@@ -93,12 +93,37 @@ const send = async () => {
   draft.value = ''
   scrollToBottom()
 
+  let charArr: string[] = []
+  let isTyping: boolean = false
+
+  //独立打字消费函数
+  async function runTypeWriter() {
+    isTyping = true
+    try {
+      while (charArr.length > 0) {
+        const c = charArr.shift()
+        console.log('c:', c)
+        if (!c) continue
+
+        placeholderMsg.content += c
+        await scrollToBottom()
+        const delay = /[，。！？；：]/.test(c) ? 120 : 30
+        await new Promise((r) => setTimeout(r, delay)) //等待for await...of push完成
+      }
+    } finally {
+      isTyping = false
+      if (charArr.length > 0) void runTypeWriter()
+    }
+  }
+
   try {
     for await (const chunk of streamChat({ conversationId: activeId.value, message: text })) {
       if (chunk.done) break
-      if (placeholderMsg.isLoading) placeholderMsg.isLoading = false
-      placeholderMsg.content += chunk.delta
-      scrollToBottom()
+      placeholderMsg.isLoading = false
+      charArr.push(...Array.from(chunk.delta))
+      if (!isTyping) {
+        runTypeWriter()
+      }
     }
   } finally {
     placeholderMsg.isLoading = false
