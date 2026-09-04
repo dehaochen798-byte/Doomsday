@@ -1,11 +1,14 @@
-<script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+﻿<script setup lang="ts">
+import { computed, nextTick, reactive, ref } from 'vue'
+import BaseLoadingDots from '@/components/BaseLoadingDots.vue'
+import { streamChat } from '@/api'
 
 interface ChatMessage {
   id: number
   role: 'me' | 'other'
   content: string
   time: string
+  isLoading?: boolean
 }
 
 interface Conversation {
@@ -15,8 +18,7 @@ interface Conversation {
   messages: ChatMessage[]
 }
 
-const now = () =>
-  new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+const now = () => new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 
 const conversations = ref<Conversation[]>([
   {
@@ -32,17 +34,13 @@ const conversations = ref<Conversation[]>([
     id: 2,
     name: '产品讨论组',
     avatar: '产',
-    messages: [
-      { id: 1, role: 'other', content: '需求文档我发到群里了。', time: '昨天' },
-    ],
+    messages: [{ id: 1, role: 'other', content: '需求文档我发到群里了。', time: '昨天' }],
   },
   {
     id: 3,
     name: '张三',
     avatar: '张',
-    messages: [
-      { id: 1, role: 'other', content: '晚点一起吃饭？', time: '周一' },
-    ],
+    messages: [{ id: 1, role: 'other', content: '晚点一起吃饭？', time: '周一' }],
   },
 ])
 
@@ -51,9 +49,7 @@ const draft = ref('')
 const listRef = ref<{ scrollTo: (options: ScrollToOptions) => void } | null>(null)
 let nextId = 100
 
-const activeConversation = computed(
-  () => conversations.value.find((c) => c.id === activeId.value)!,
-)
+const activeConversation = computed(() => conversations.value.find((c) => c.id === activeId.value)!)
 
 const messages = computed(() => activeConversation.value.messages)
 
@@ -74,17 +70,39 @@ const selectConversation = (id: number) => {
   scrollToBottom()
 }
 
-const send = () => {
+const send = async () => {
   const text = draft.value.trim()
   if (!text) return
+
   activeConversation.value.messages.push({
     id: nextId++,
     role: 'me',
     content: text,
     time: now(),
   })
+
+  const placeholderMsg = reactive<ChatMessage>({
+    id: nextId++,
+    role: 'other',
+    content: '',
+    time: now(),
+    isLoading: true,
+  })
+
+  activeConversation.value.messages.push(placeholderMsg)
   draft.value = ''
   scrollToBottom()
+
+  try {
+    for await (const chunk of streamChat({ conversationId: activeId.value, message: text })) {
+      if (chunk.done) break
+      if (placeholderMsg.isLoading) placeholderMsg.isLoading = false
+      placeholderMsg.content += chunk.delta
+      scrollToBottom()
+    }
+  } finally {
+    placeholderMsg.isLoading = false
+  }
 }
 
 // Enter 发送，Shift+Enter 换行
@@ -99,11 +117,7 @@ const onKeydown = (e: KeyboardEvent) => {
 <template>
   <n-layout has-sider class="chat">
     <!-- 左侧：会话列表 -->
-    <n-layout-sider
-      bordered
-      :width="260"
-      content-class="chat__sidebar"
-    >
+    <n-layout-sider bordered :width="260" content-class="chat__sidebar">
       <div class="chat__sidebar-title">会话</div>
       <ul class="conv-list">
         <li
@@ -136,26 +150,22 @@ const onKeydown = (e: KeyboardEvent) => {
             在线
           </span>
         </div>
-        <router-link :to="{path:'/text'}" class="chat__nav">前往测试页</router-link>
+        <router-link :to="{ path: '/text' }" class="chat__nav">前往测试页</router-link>
       </n-layout-header>
 
       <!-- 中部：消息流 -->
-      <n-layout-content
-        ref="listRef"
-        class="chat__body"
-        :native-scrollbar="true"
-      >
+      <n-layout-content ref="listRef" class="chat__body" :native-scrollbar="true">
         <div class="chat__list">
-          <div
-            v-for="msg in messages"
-            :key="msg.id"
-            class="msg"
-            :class="`msg--${msg.role}`"
-          >
+          <div v-for="msg in messages" :key="msg.id" class="msg" :class="`msg--${msg.role}`">
             <div class="msg__avatar">{{ msg.role === 'me' ? '我' : 'AI' }}</div>
             <div class="msg__main">
-              <div class="msg__bubble">{{ msg.content }}</div>
-              <span class="msg__time">{{ msg.time }}</span>
+              <div v-if="msg.isLoading" class="msg__bubble msg__bubble--loading">
+                <BaseLoadingDots :size="28" color="#18a058" />
+              </div>
+              <div v-else>
+                <div class="msg__bubble">{{ msg.content }}</div>
+                <span class="msg__time">{{ msg.time }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -172,12 +182,7 @@ const onKeydown = (e: KeyboardEvent) => {
             :autosize="{ minRows: 1, maxRows: 5 }"
             @keydown="onKeydown"
           />
-          <n-button
-            type="primary"
-            size="large"
-            :disabled="!draft.trim()"
-            @click="send"
-          >
+          <n-button type="primary" size="large" :disabled="!draft.trim()" @click="send">
             发送
           </n-button>
         </div>
@@ -432,6 +437,14 @@ $max-width: 768px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     background: #fff;
     color: $text-main;
+
+    // 加载态气泡：让环形脉冲居中，并收紧上下留白
+    &--loading {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+    }
   }
 
   &__time {
