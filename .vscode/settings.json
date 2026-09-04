@@ -1,0 +1,21 @@
+{
+  // Format with Prettier and apply ESLint fixes on every save (Ctrl+S).
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  // Each sub-project has its own eslint.config.js; resolve them independently.
+  "eslint.workingDirectories": [
+    { "directory": "Clint", "changeProcessCWD": true },
+    { "directory": "Server", "changeProcessCWD": true }
+  ],
+  "eslint.validate": ["javascript", "typescript", "typescriptreact", "vue"],
+  // CSS/SCSS are intentionally not linted or reformatted by this setup.
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+  "[css]": { "editor.formatOnSave": false },
+  "[scss]": { "editor.formatOnSave": false },
+  "[less]": { "editor.formatOnSave": false }
+}

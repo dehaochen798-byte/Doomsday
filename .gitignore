@@ -23,7 +23,9 @@ npm-debug.log*
 Thumbs.db
 
 # IDE编辑器配置
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo

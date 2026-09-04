@@ -1,0 +1,8 @@
+dist
+node_modules
+public
+*.log
+*.css
+*.scss
+*.sass
+*.less
